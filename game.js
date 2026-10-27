@@ -5,6 +5,7 @@
   let playerData = { nickname: '', email: '', isVisitor: false, kills: 0, headshots: 0, score: 0 };
   let isRegistering = false;
   let playerHP = 100;
+  let selectedWeaponType = 'revolver';
 
   // CONSOLE CS (' ou ")
   const consoleEl = document.getElementById('cs-console');
@@ -37,10 +38,19 @@
     }
   });
 
+  // SELEÇÃO DE ARMAS NO MENU
+  document.querySelectorAll('.weapon-select').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.weapon-select').forEach(b => { b.classList.add('sec'); b.classList.remove('active'); });
+      e.target.classList.remove('sec');
+      e.target.classList.add('active');
+      selectedWeaponType = e.target.getAttribute('data-weapon');
+    });
+  });
+
   // AUTENTICAÇÃO E TELAS
   const authScreen = document.getElementById('auth-screen');
   const menuScreenEl = document.getElementById('main-menu-screen');
-  const pauseScreenEl = document.getElementById('pause-screen');
   const authFormArea = document.getElementById('auth-form-area');
   const authModeChoice = document.getElementById('auth-mode-choice');
 
@@ -97,7 +107,6 @@
   function enterMainMenu() {
     authScreen.style.display = 'none';
     menuScreenEl.style.display = 'flex';
-    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('welcome-player-title').textContent = `OLÁ, ${playerData.nickname.toUpperCase()}`;
     document.getElementById('stat-kills').textContent = playerData.kills;
     document.getElementById('stat-hs').textContent = playerData.headshots;
@@ -138,20 +147,30 @@
       </div>`;
   }
 
-  // ============ WEB AUDIO API ============
+  // ============ WEB AUDIO API (Sons Completos) ============
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const now = audioCtx.currentTime;
     const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    
     if (type === 'revolver') {
       osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
       gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+    } else if (type === 'smg') {
+      osc.type = 'square'; osc.frequency.setValueAtTime(320, now); osc.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+      gain.gain.setValueAtTime(0.35, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+    } else if (type === 'sniper') {
+      osc.type = 'triangle'; osc.frequency.setValueAtTime(160, now); osc.frequency.exponentialRampToValueAtTime(20, now + 0.4);
+      gain.gain.setValueAtTime(0.8, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
     } else if (type === 'headshot') {
       osc.type = 'sine'; osc.frequency.setValueAtTime(987.77, now); osc.frequency.setValueAtTime(1318.51, now + 0.08);
       gain.gain.setValueAtTime(0.6, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    } else if (type === 'hit') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, now); osc.frequency.exponentialRampToValueAtTime(30, now + 0.15);
+      gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
     }
-    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.2);
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.4);
   }
 
   // ============ THREE.JS: CENA E MUNDO 3D ============
@@ -305,7 +324,6 @@
   }
   scene.add(millBlades);
 
-  // Restaurando Árvores e Fardos de Feno no Mapa
   function createAppleTree(tx, tz) {
     addSolidBlock(tx, 0, tz, 1.2, 4.5, 1.2, 0x5c3a21);
     for (let lx = -2; lx <= 2; lx++) {
@@ -336,7 +354,7 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo & Gerenciamento de Pausa (ESC / B)
+  // Controles do Jogo & Pausa
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
@@ -344,51 +362,23 @@
   document.getElementById('play-game-btn').addEventListener('click', () => {
     inMainMenu = false;
     menuScreenEl.style.display = 'none';
-    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('score').style.display = 'block';
     document.getElementById('room-info').style.display = 'block';
     hud.style.display = 'block';
     crosshairEl.style.display = 'block';
+    initWeapon();
     controls.lock();
   });
 
-  // Botões do menu de pausa (se existirem)
-  const resumeBtn = document.getElementById('resume-btn');
-  if (resumeBtn) {
-    resumeBtn.addEventListener('click', () => {
-      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
-      controls.lock();
-    });
-  }
-
-  const exitBtn = document.getElementById('exit-to-main-btn');
-  if (exitBtn) {
-    exitBtn.addEventListener('click', () => {
-      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
-      menuScreenEl.style.display = 'flex';
-      inMainMenu = true;
-      document.getElementById('score').style.display = 'none';
-      document.getElementById('room-info').style.display = 'none';
-      hud.style.display = 'none';
-      crosshairEl.style.display = 'none';
-    });
-  }
-
-  controls.addEventListener('lock', () => { 
-    playing = true; 
-    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
-  });
-
-  controls.addEventListener('unlock', () => { 
-    playing = false; 
-    if (!inMainMenu && pauseScreenEl) {
-      pauseScreenEl.style.display = 'flex';
-    }
-  });
+  controls.addEventListener('lock', () => { playing = true; });
+  controls.addEventListener('unlock', () => { playing = false; });
 
   addEventListener('keydown', e => {
     if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
       controls.unlock();
+    }
+    if (e.code === 'KeyR' && playing) {
+      startReload();
     }
   });
 
@@ -396,22 +386,41 @@
   addEventListener('keydown', e => keys[e.code] = true);
   addEventListener('keyup', e => keys[e.code] = false);
 
-  // Arma do Jogador & Sistema de Recarga Automática
+  // Configuração Dinâmica de Armas
   const gun = new THREE.Group();
-  const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
-  const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
-  part(0.07, 0.11, 0.26, 0x6a6a72, 0, 0.02, -0.1);
-  part(0.05, 0.05, 0.22, 0x3a3a40, 0, 0.045, -0.31);
-  part(0.11, 0.11, 0.10, 0x9a9aa2, 0, 0.0, 0.0);
-  part(0.08, 0.17, 0.10, 0x7a4524, 0, -0.12, 0.1);
-  
+  camera.add(gun);
   const flash = new THREE.Mesh(boxGeo(0.2, 0.2, 0.12), new THREE.MeshBasicMaterial({ color: 0xffe28a, fog: false }));
   flash.position.set(0, 0.045, -0.42); flash.visible = false; gun.add(flash);
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.045, -0.42); gun.add(muzzle);
-  gun.position.set(0.28, -0.26, -0.55); camera.add(gun);
+  gun.position.set(0.28, -0.26, -0.55);
 
-  const W = { ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0 };
-  
+  let W = { name: '', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
+
+  function initWeapon() {
+    while(gun.children.length > 2) gun.remove(gun.children[2]); // Remove partes antigas mantendo flash e muzzle
+    const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
+    const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
+
+    if (selectedWeaponType === 'revolver') {
+      W = { name: 'REVÓLVER (.38)', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
+      part(0.07, 0.11, 0.26, 0x6a6a72, 0, 0.02, -0.1);
+      part(0.05, 0.05, 0.22, 0x3a3a40, 0, 0.045, -0.31);
+      part(0.11, 0.11, 0.10, 0x9a9aa2, 0, 0.0, 0.0);
+      part(0.08, 0.17, 0.10, 0x7a4524, 0, -0.12, 0.1);
+    } else if (selectedWeaponType === 'smg') {
+      W = { name: 'METRALHADORA', ammo: 30, mag: 30, reserve: 120, head: 50, body: 18, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
+      part(0.08, 0.12, 0.42, 0x4a4a50, 0, 0.02, -0.15);
+      part(0.06, 0.06, 0.32, 0x222225, 0, 0.06, -0.35);
+      part(0.09, 0.22, 0.12, 0x333, 0, -0.14, 0.05);
+    } else if (selectedWeaponType === 'sniper') {
+      W = { name: 'SNIPER RIFLE', ammo: 5, mag: 5, reserve: 20, head: 100, body: 90, rate: 1.2, cd: 0, reloading: false, rt: 0, soundType: 'sniper' };
+      part(0.06, 0.09, 0.65, 0x2e3b2e, 0, 0.02, -0.2);
+      part(0.04, 0.04, 0.45, 0x111, 0, 0.07, -0.4);
+      part(0.08, 0.18, 0.12, 0x5c3a21, 0, -0.12, 0.1);
+    }
+    updateHud();
+  }
+
   // HUD de Munição e Vida
   const hud = document.createElement('div');
   hud.id = 'hud';
@@ -419,11 +428,10 @@
   document.body.appendChild(hud);
 
   function updateHud() {
-    hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.reloading ? 'RECARREGANDO...' : W.ammo + ' / ' + W.reserve}</b>`;
+    hud.innerHTML = `${W.name} | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.reloading ? 'RECARREGANDO...' : W.ammo + ' / ' + W.reserve}</b>`;
   }
-  updateHud();
 
-  // Inimigos (Bots Completos com Pernas)
+  // Inimigos (Bots com Pernas Completas)
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
   const bots = [];
   function makeBot() {
@@ -435,15 +443,13 @@
       b.userData.head = isHead; 
       g.add(b); 
     };
-    // Tronco e Cabeça
     addB(0.55, 0.65, 0.35, BM.black, 0, 0.95, 0);
     addB(0.45, 0.45, 0.45, BM.black, 0, 1.55, 0, true);
     addB(0.1, 0.1, 0.05, BM.eye, -0.1, 1.6, 0.24);
     addB(0.1, 0.1, 0.05, BM.eye, 0.1, 1.6, 0.24);
-    // Braços
     addB(0.18, 0.55, 0.18, BM.red, -0.38, 0.95, 0);
     addB(0.18, 0.55, 0.18, BM.red, 0.38, 0.95, 0);
-    // Pernas completas restauradas
+    // Pernas
     addB(0.2, 0.6, 0.2, BM.black, -0.15, 0.3, 0);
     addB(0.2, 0.6, 0.2, BM.black, 0.15, 0.3, 0);
     
@@ -454,19 +460,16 @@
   for (let i = 0; i < 6; i++) makeBot();
   let spawnTimer = 0;
 
-  // Mecânica de Tiro e Recarga Automática
+  // Mecânica de Tiro e Recarga
   const ray = new THREE.Raycaster();
   const lasers = [];
   let flashT = 0;
 
   addEventListener('mousedown', e => {
     if (!playing || e.button !== 0 || W.cd > 0 || W.reloading) return;
-    if (W.ammo <= 0) {
-      startReload();
-      return;
-    }
+    if (W.ammo <= 0) { startReload(); return; }
     W.ammo--; W.cd = W.rate;
-    playSound('revolver');
+    playSound(W.soundType);
     updateHud();
 
     ray.setFromCamera({ x: 0, y: 0 }, camera);
@@ -481,7 +484,7 @@
       if (curr && bots.includes(curr)) {
         const isHead = hitObj.userData.head;
         curr.userData.hp -= isHead ? W.head : W.body;
-        if (isHead) playSound('headshot');
+        playSound(isHead ? 'headshot' : 'hit');
         if (curr.userData.hp <= 0) {
           scene.remove(curr); bots.splice(bots.indexOf(curr), 1);
           playerData.kills++;
@@ -501,7 +504,7 @@
   function startReload() {
     if (W.reloading || W.reserve <= 0 || W.ammo === W.mag) return;
     W.reloading = true;
-    W.rt = 1.5; // Tempo de recarga em segundos
+    W.rt = 1.5;
     updateHud();
   }
 
@@ -555,7 +558,7 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Movimentação e Ataque dos Bots
+    // Movimentação e Ataque dos Bots com Dano Vermelho na Tela
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
@@ -566,6 +569,9 @@
         if (dist < 12) u.target.copy(camera.position);
         if (dist < 2.2) {
           playerHP -= 15 * dt; updateHud();
+          // Efeito visual de dano vermelho
+          const flashEl = document.getElementById('damage-flash');
+          if (flashEl) { flashEl.style.background = 'rgba(255,0,0,0.4)'; setTimeout(() => flashEl.style.background = 'rgba(255,0,0,0)', 100); }
           if (playerHP <= 0) { playerHP = 100; camera.position.copy(findSafeSpawn(10, 18)); }
         }
       }
