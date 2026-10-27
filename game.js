@@ -39,7 +39,7 @@
 
   // AUTENTICAÇÃO
   const authScreen = document.getElementById('auth-screen');
-  const mainMenuScreen = document.getElementById('main-menu-screen');
+  const menuScreenEl = document.getElementById('main-menu-screen');
   const authFormArea = document.getElementById('auth-form-area');
   const authModeChoice = document.getElementById('auth-mode-choice');
 
@@ -95,7 +95,7 @@
 
   function enterMainMenu() {
     authScreen.style.display = 'none';
-    mainMenuScreen.style.display = 'flex';
+    menuScreenEl.style.display = 'flex';
     document.getElementById('welcome-player-title').textContent = `OLÁ, ${playerData.nickname.toUpperCase()}`;
     document.getElementById('stat-kills').textContent = playerData.kills;
     document.getElementById('stat-hs').textContent = playerData.headshots;
@@ -104,7 +104,7 @@
   }
 
   document.getElementById('logout-btn').addEventListener('click', () => {
-    mainMenuScreen.style.display = 'none';
+    menuScreenEl.style.display = 'none';
     authScreen.style.display = 'flex';
     authFormArea.style.display = 'none';
     authModeChoice.style.display = 'block';
@@ -320,17 +320,15 @@
 
   // Controles do Jogo & Pausa (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
-  const mainMenuScreen = document.getElementById('main-menu-screen');
-  const hudEl = document.getElementById('hud');
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
 
   document.getElementById('play-game-btn').addEventListener('click', () => {
     inMainMenu = false;
-    mainMenuScreen.style.display = 'none';
+    menuScreenEl.style.display = 'none';
     document.getElementById('score').style.display = 'block';
     document.getElementById('room-info').style.display = 'block';
-    hudEl.style.display = 'block';
+    hud.style.display = 'block';
     crosshairEl.style.display = 'block';
     controls.lock();
   });
@@ -363,6 +361,13 @@
   gun.position.set(0.28, -0.26, -0.55); camera.add(gun);
 
   const W = { ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0 };
+  
+  // HUD de Munição e Vida
+  const hud = document.createElement('div');
+  hud.id = 'hud';
+  hud.style.cssText = `position: fixed; left: 22px; bottom: 18px; color: #fff; font-size: 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 2; display: none;`;
+  document.body.appendChild(hud);
+
   function updateHud() {
     hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.ammo} / ${W.reserve}</b>`;
   }
@@ -467,7 +472,7 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Bots Movimentação e Ataque
+    // Movimentação e Ataque dos Bots
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
