@@ -442,20 +442,44 @@
 
     if (selectedWeaponType === 'revolver') {
       W = { name: 'REVÓLVER (.38)', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
-      part(0.07, 0.11, 0.26, 0x6a6a72, 0, 0.02, -0.1);
-      part(0.05, 0.05, 0.22, 0x3a3a40, 0, 0.045, -0.31);
-      part(0.11, 0.11, 0.10, 0x9a9aa2, 0, 0.0, 0.0);
-      part(0.08, 0.17, 0.10, 0x7a4524, 0, -0.12, 0.1);
+      // Corpo Principal do Revólver
+      part(0.08, 0.13, 0.32, 0x5a5a62, 0, 0.02, -0.12);
+      // Cano
+      part(0.06, 0.06, 0.28, 0x303035, 0, 0.05, -0.34);
+      // Tambor (Cilindro)
+      part(0.12, 0.12, 0.14, 0x8a8a92, 0, 0.02, -0.1);
+      // Alça / Coronha
+      part(0.08, 0.22, 0.12, 0x6b4423, 0, -0.14, 0.08);
+      // Cão e Gatilho
+      part(0.03, 0.06, 0.05, 0x222, 0, 0.08, 0.02);
+      part(0.02, 0.06, 0.04, 0x111, 0, -0.04, -0.04);
     } else if (selectedWeaponType === 'smg') {
       W = { name: 'METRALHADORA', ammo: 30, mag: 30, reserve: 120, head: 50, body: 18, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
-      part(0.08, 0.12, 0.42, 0x4a4a50, 0, 0.02, -0.15);
-      part(0.06, 0.06, 0.32, 0x222225, 0, 0.06, -0.35);
-      part(0.09, 0.22, 0.12, 0x333, 0, -0.14, 0.05);
+      // Corpo da SMG
+      part(0.09, 0.14, 0.45, 0x3a3a40, 0, 0.02, -0.15);
+      // Cano Longo com Silenciador/Focinho
+      part(0.05, 0.05, 0.35, 0x1a1a1e, 0, 0.06, -0.45);
+      // Carregador Reto Alongado
+      part(0.06, 0.26, 0.10, 0x222225, 0, -0.16, -0.05);
+      // Empunhadura Frontal e Traseira
+      part(0.07, 0.18, 0.09, 0x2a2a2e, 0, -0.14, 0.12);
+      part(0.06, 0.14, 0.08, 0x2a2a2e, 0, -0.12, -0.22);
+      // Luneta / Mira Tática Superior
+      part(0.05, 0.05, 0.22, 0x111, 0, 0.11, -0.15);
     } else if (selectedWeaponType === 'sniper') {
       W = { name: 'SNIPER RIFLE', ammo: 5, mag: 5, reserve: 20, head: 100, body: 90, rate: 1.2, cd: 0, reloading: false, rt: 0, soundType: 'sniper' };
-      part(0.06, 0.09, 0.65, 0x2e3b2e, 0, 0.02, -0.2);
-      part(0.04, 0.04, 0.45, 0x111, 0, 0.07, -0.4);
-      part(0.08, 0.18, 0.12, 0x5c3a21, 0, -0.12, 0.1);
+      // Corpo / Chassi Principal
+      part(0.07, 0.11, 0.70, 0x243024, 0, 0.02, -0.2);
+      // Cano da Sniper Super Longo
+      part(0.04, 0.04, 0.55, 0x151815, 0, 0.05, -0.55);
+      // Luneta de Precisão (Scope)
+      part(0.07, 0.08, 0.30, 0x111, 0, 0.12, -0.2);
+      // Suporte da Luneta
+      part(0.03, 0.06, 0.08, 0x333, 0, 0.08, -0.2);
+      // Coronha de Madeira / Polímero Longa
+      part(0.08, 0.13, 0.30, 0x4a3319, 0, 0.0, 0.22);
+      // Puxador / Carregador
+      part(0.05, 0.18, 0.10, 0x1b1b1b, 0, -0.14, 0.05);
     }
     updateHud();
   }
