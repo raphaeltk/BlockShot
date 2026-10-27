@@ -136,6 +136,22 @@
       </div>`;
   }
 
+  // ============ WEB AUDIO API ============
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    if (type === 'revolver') {
+      osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now); osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+      gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
+    } else if (type === 'headshot') {
+      osc.type = 'sine'; osc.frequency.setValueAtTime(987.77, now); osc.frequency.setValueAtTime(1318.51, now + 0.08);
+      gain.gain.setValueAtTime(0.6, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+    }
+    osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.2);
+  }
+
   // ============ THREE.JS: CENA E MUNDO 3D ============
   const FOG = 0xf2b09a;
   const scene = new THREE.Scene();
@@ -304,6 +320,9 @@
 
   // Controles do Jogo & Pausa (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+  const mainMenuScreen = document.getElementById('main-menu-screen');
+  const hudEl = document.getElementById('hud');
+  const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
 
   document.getElementById('play-game-btn').addEventListener('click', () => {
@@ -311,8 +330,8 @@
     mainMenuScreen.style.display = 'none';
     document.getElementById('score').style.display = 'block';
     document.getElementById('room-info').style.display = 'block';
-    document.getElementById('hud').style.display = 'block';
-    document.getElementById('cross').style.display = 'block';
+    hudEl.style.display = 'block';
+    crosshairEl.style.display = 'block';
     controls.lock();
   });
 
@@ -320,7 +339,7 @@
   controls.addEventListener('unlock', () => { playing = false; });
 
   addEventListener('keydown', e => {
-    if (e.code === 'KeyB' && playing) {
+    if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
       controls.unlock();
     }
   });
@@ -329,7 +348,7 @@
   addEventListener('keydown', e => keys[e.code] = true);
   addEventListener('keyup', e => keys[e.code] = false);
 
-  // Arma do Jogador
+  // Arma do Jogador & Sistema de Tiro
   const gun = new THREE.Group();
   const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
   const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
@@ -337,29 +356,78 @@
   part(0.05, 0.05, 0.22, 0x3a3a40, 0, 0.045, -0.31);
   part(0.11, 0.11, 0.10, 0x9a9aa2, 0, 0.0, 0.0);
   part(0.08, 0.17, 0.10, 0x7a4524, 0, -0.12, 0.1);
+  
+  const flash = new THREE.Mesh(boxGeo(0.2, 0.2, 0.12), new THREE.MeshBasicMaterial({ color: 0xffe28a, fog: false }));
+  flash.position.set(0, 0.045, -0.42); flash.visible = false; gun.add(flash);
+  const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.045, -0.42); gun.add(muzzle);
   gun.position.set(0.28, -0.26, -0.55); camera.add(gun);
 
-  // HUD de Munição e Vida
-  const hud = document.createElement('div');
-  hud.id = 'hud';
-  hud.style.cssText = `position: fixed; left: 22px; bottom: 18px; color: #fff; font-size: 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 2; display: none;`;
-  hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>100</b><br><b>6 / 36</b>`;
-  document.body.appendChild(hud);
+  const W = { ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0 };
+  function updateHud() {
+    hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.ammo} / ${W.reserve}</b>`;
+  }
+  updateHud();
 
-  // Inimigos (Bots)
+  // Inimigos (Bots) com HP e Colisão
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
   const bots = [];
   function makeBot() {
     const g = new THREE.Group();
-    const addB = (w, h, dd, m, x, y, z) => { const b = new THREE.Mesh(boxGeo(w, h, dd), m); b.position.set(x, y, z); b.castShadow = true; g.add(b); };
+    const addB = (w, h, dd, m, x, y, z) => { const b = new THREE.Mesh(boxGeo(w, h, dd), m); b.position.set(x, y, z); b.castShadow = true; b.userData.head = y > 1.4; g.add(b); };
     addB(0.55, 0.65, 0.35, BM.black, 0, 0.95, 0);
     addB(0.45, 0.45, 0.45, BM.black, 0, 1.55, 0);
+    addB(0.1, 0.1, 0.05, BM.eye, -0.1, 1.6, 0.24);
+    addB(0.1, 0.1, 0.05, BM.eye, 0.1, 1.6, 0.24);
+    addB(0.18, 0.55, 0.18, BM.red, -0.38, 0.95, 0);
+    addB(0.18, 0.55, 0.18, BM.red, 0.38, 0.95, 0);
+    
     g.position.copy(findSafeSpawn(12, 38)); g.position.y = 0; g.scale.setScalar(1.5);
-    g.userData = { target: new THREE.Vector3(), t: 0, ph: Math.random() * 6 };
+    g.userData = { target: new THREE.Vector3(), t: 0, ph: Math.random() * 6, hp: 100 };
     scene.add(g); bots.push(g);
   }
   for (let i = 0; i < 6; i++) makeBot();
   let spawnTimer = 0;
+
+  // Mecânica de Tiro
+  const ray = new THREE.Raycaster();
+  const lasers = [];
+  let flashT = 0;
+
+  addEventListener('mousedown', e => {
+    if (!playing || e.button !== 0 || W.cd > 0) return;
+    if (W.ammo <= 0) return;
+    W.ammo--; W.cd = W.rate;
+    playSound('revolver');
+    updateHud();
+
+    ray.setFromCamera({ x: 0, y: 0 }, camera);
+    const hits = ray.intersectObjects([...bots, ...obstacles], true);
+    const from = new THREE.Vector3(); muzzle.getWorldPosition(from);
+    let to = ray.ray.at(70, new THREE.Vector3());
+
+    if (hits.length) {
+      to = hits[0].point.clone();
+      let hitObj = hits[0].object, curr = hitObj;
+      while (curr && curr.parent) { if (bots.includes(curr)) break; curr = curr.parent; }
+      if (curr && bots.includes(curr)) {
+        const isHead = hitObj.userData.head;
+        curr.userData.hp -= isHead ? W.head : W.body;
+        if (isHead) playSound('headshot');
+        if (curr.userData.hp <= 0) {
+          scene.remove(curr); bots.splice(bots.indexOf(curr), 1);
+          playerData.kills++;
+          if (isHead) playerData.headshots++;
+          playerData.score = playerData.kills * 10;
+          document.getElementById('score').textContent = 'PONTOS: ' + playerData.score;
+        }
+      }
+    }
+
+    const l = new THREE.Mesh(boxGeo(0.03, 0.03, from.distanceTo(to)), new THREE.MeshBasicMaterial({ color: 0xffd27a }));
+    l.position.copy(from).lerp(to, 0.5); l.lookAt(to); l.userData.life = 0.12;
+    scene.add(l); lasers.push(l);
+    flash.visible = true; flashT = 0.05;
+  });
 
   // Loop Principal Contínuo
   const clock = new THREE.Clock();
@@ -368,6 +436,7 @@
   function loop() {
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+    if (W.cd > 0) W.cd -= dt;
 
     if (playing) {
       const sp = 7 * dt;
@@ -398,12 +467,20 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Movimentação dos Bots
+    // Bots Movimentação e Ataque
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
       const u = b.userData; u.t -= dt;
       if (u.t <= 0) { u.target.set(rand(-FIELD + 3, FIELD - 3), 0, rand(-FIELD + 3, FIELD - 3)); u.t = rand(4, 9); }
+      if (playing) {
+        const dist = b.position.distanceTo(camera.position);
+        if (dist < 12) u.target.copy(camera.position);
+        if (dist < 2.2) {
+          playerHP -= 15 * dt; updateHud();
+          if (playerHP <= 0) { playerHP = 100; camera.position.copy(findSafeSpawn(10, 18)); }
+        }
+      }
       const dir = u.target.clone().sub(b.position); dir.y = 0;
       if (dir.length() > 0.5) {
         dir.normalize(); b.position.addScaledVector(dir, 2.0 * dt);
@@ -411,6 +488,12 @@
       }
       b.position.y = Math.abs(Math.sin(t * 5 + u.ph)) * 0.08;
     });
+
+    if (flashT > 0 && (flashT -= dt) <= 0) flash.visible = false;
+    for (let i = lasers.length - 1; i >= 0; i--) {
+      const l = lasers[i]; l.userData.life -= dt;
+      if (l.userData.life <= 0) { scene.remove(l); lasers.splice(i, 1); }
+    }
 
     renderer.render(scene, camera);
   }
