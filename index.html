@@ -32,16 +32,6 @@
   #cross.style-cross::after { top: 10px; left: 0; height: 2px; width: 22px; }
   #cross.style-dot { width: 5px; height: 5px; background: #ffffff; border: 1px solid #000000; border-radius: 50%; box-shadow: 0 0 3px rgba(0,0,0,0.8); }
 
-  #sniper-scope { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: none; align-items: center; justify-content: center; }
-  #sniper-scope .lens {
-    width: min(80vw, 80vh); height: min(80vw, 80vh); border-radius: 50%;
-    border: 300px solid rgba(0,0,0,0.92); box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
-    position: relative; display: flex; align-items: center; justify-content: center;
-  }
-  #sniper-scope .line-h { position: absolute; width: 100%; height: 2px; background: rgba(0,0,0,0.85); }
-  #sniper-scope .line-v { position: absolute; height: 100%; width: 2px; background: rgba(0,0,0,0.85); }
-  #sniper-scope .red-dot { width: 5px; height: 5px; background: #ff1a1a; border-radius: 50%; box-shadow: 0 0 6px #ff0000; z-index: 2; }
-
   .overlay-screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column;
     background: rgba(40,15,25,.88); color: #fff; text-align: center; z-index: 4; }
   .overlay-screen h1 { font-size: 40px; margin: 0 0 6px; text-shadow: 3px 3px 0 #c0392b; letter-spacing: 2px; }
@@ -61,7 +51,7 @@
 
   input[type="text"], input[type="password"], input[type="email"] { padding: 8px 12px; background: #111; border: 2px solid #fff; color: #fff; font-family: inherit; font-size: 14px; margin: 6px 0; width: 85%; }
 
-  /* CONSOLE ESTILO COUNTER-STRIKE */
+  /* CONSOLE CS */
   #cs-console { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 240px; background: rgba(15,15,15,0.95); border-bottom: 3px solid #c0392b; z-index: 100; flex-direction: column; padding: 10px; box-sizing: border-box; font-family: monospace; }
   #cs-console-output { flex: 1; color: #2ecc71; font-size: 13px; overflow-y: auto; text-align: left; padding: 5px; }
   #cs-console-input { width: 100%; background: #000; border: 1px solid #444; color: #fff; padding: 8px; font-family: monospace; font-size: 14px; outline: none; box-sizing: border-box; }
@@ -75,22 +65,15 @@
 <div id="damage-flash"></div>
 <div id="hs-indicator">HEADSHOT!</div>
 <div id="cross" class="style-dot"></div>
-<div id="sniper-scope">
-  <div class="lens">
-    <div class="line-h"></div>
-    <div class="line-v"></div>
-    <div class="red-dot"></div>
-  </div>
-</div>
 <div id="hud"></div>
 
-<!-- CONSOLE ESTILO CS (' ou ") -->
+<!-- CONSOLE CS (' ou ") -->
 <div id="cs-console">
-  <div id="cs-console-output">BlockShot Developer Console v1.0 (Digite 'tk admin' para acessar o painel de controle)</div>
+  <div id="cs-console-output">BlockShot Developer Console v1.0 (Digite 'tk admin' para acessar o painel)</div>
   <input type="text" id="cs-console-input" autofocus placeholder="Digite o comando aqui...">
 </div>
 
-<!-- TELA DE LOGIN / CADASTRO / VISITANTE -->
+<!-- TELA DE LOGIN -->
 <div id="auth-screen" class="overlay-screen">
   <h1>BLOCKSHOT</h1>
   <p>AUTENTICAÇÃO CLOUDFLARE SECURE</p>
@@ -116,7 +99,7 @@
   </div>
 </div>
 
-<!-- MENU PRINCIPAL PÓS-LOGIN -->
+<!-- MENU PRINCIPAL -->
 <div id="main-menu-screen" class="overlay-screen" style="display:none;">
   <h1 id="welcome-player-title">OLÁ, PLAYER</h1>
   <p>SALA DE PARTIDA MULTIPLAYER (MATA-MATA)</p>
@@ -137,7 +120,7 @@
   </div>
 </div>
 
-<!-- MODAL POP-UP ADMIN -->
+<!-- MODAL ADMIN -->
 <div id="admin-modal" class="modal-screen">
   <h2>AUTENTICAÇÃO DE ADMINISTRADOR</h2>
   <div class="menu-panel">
@@ -149,11 +132,11 @@
   <button class="menu-btn sec" id="close-admin-modal">FECHAR</button>
 </div>
 
-<!-- PAINEL ADMIN DASHBOARD -->
+<!-- DASHBOARD ADMIN -->
 <div id="admin-dashboard-modal" class="modal-screen">
-  <h2>PAINEL DE CONTROLE ADMIN (CLOUDFLARE)</h2>
+  <h2>PAINEL DE CONTROLE ADMIN</h2>
   <div class="menu-panel" style="max-width: 600px;">
-    <input type="text" id="admin-search" placeholder="Pesquisar por Nickname ou E-mail...">
+    <input type="text" id="admin-search" placeholder="Pesquisar por Nickname...">
     <div id="admin-list-container" style="max-height: 200px; overflow-y:auto; background:#111; margin-top:10px; padding:8px; text-align:left; font-size:12px;"></div>
   </div>
   <button class="menu-btn sec" id="close-dashboard-btn">FECHAR PAINEL</button>
@@ -165,14 +148,12 @@
 <script>
 (function BlockShotOnline() {
   'use strict';
-
-  // Anti-Tamper básico
   document.addEventListener('contextmenu', e => e.preventDefault());
 
   let playerData = { nickname: '', email: '', isVisitor: false, kills: 0, headshots: 0, score: 0 };
   let isRegistering = false;
 
-  // CONTROLE DO CONSOLE CS (' ou ")
+  // CONSOLE CS
   const consoleEl = document.getElementById('cs-console');
   const consoleInput = document.getElementById('cs-console-input');
   const consoleOutput = document.getElementById('cs-console-output');
@@ -203,7 +184,7 @@
     }
   });
 
-  // AUTENTICAÇÃO E FLUXO DE LOGIN
+  // AUTENTICAÇÃO
   const authScreen = document.getElementById('auth-screen');
   const mainMenuScreen = document.getElementById('main-menu-screen');
   const authFormArea = document.getElementById('auth-form-area');
@@ -250,12 +231,10 @@
       if (!nick) { alert("Informe um Nickname!"); return; }
       if (!ageChecked) { alert("Você deve confirmar a caixa de idade livre!"); return; }
       
-      // Simulação de salvamento no Cloudflare KV/D1 (Substituir por fetch para o Worker)
       playerData = { nickname: nick, email: email, isVisitor: false, kills: 0, headshots: 0, score: 0 };
       alert("Conta criada com sucesso via Cloudflare Database!");
       enterMainMenu();
     } else {
-      // Simulação de verificação de login no Cloudflare
       playerData = { nickname: email.split('@')[0], email: email, isVisitor: false, kills: 12, headshots: 5, score: 145 };
       enterMainMenu();
     }
@@ -268,7 +247,7 @@
     document.getElementById('stat-kills').textContent = playerData.kills;
     document.getElementById('stat-hs').textContent = playerData.headshots;
     document.getElementById('stat-score').textContent = playerData.score;
-    document.getElementById('stat-mode-label').textContent = playerData.isVisitor ? 'VISITANTE (Não Salva)' : 'CLOUDFLARE SECURE';
+    document.getElementById('stat-mode-label').textContent = playerData.isVisitor ? 'VISITANTE' : 'CLOUDFLARE SECURE';
   }
 
   document.getElementById('logout-btn').addEventListener('click', () => {
@@ -278,66 +257,126 @@
     authModeChoice.style.display = 'block';
   });
 
-  // POP-UP DE CREDENCIAIS ADMIN
   document.getElementById('admin-auth-submit').addEventListener('click', () => {
     const u = document.getElementById('admin-user-input').value;
     const p = document.getElementById('admin-pass-input').value;
-    // Autenticação validada estritamente no Cloudflare Worker / Ambiente Seguro
     if (u === 'tk_master' && p === 'TKTI@ADMIN2026') {
       document.getElementById('admin-modal').style.display = 'none';
       document.getElementById('admin-dashboard-modal').style.display = 'flex';
       loadAdminDashboardData();
     } else {
-      alert("Credenciais de Admin Inválidas no Cloudflare!");
+      alert("Credenciais Inválidas!");
     }
   });
 
-  document.getElementById('close-admin-modal').addEventListener('click', () => {
-    document.getElementById('admin-modal').style.display = 'none';
-  });
-
-  document.getElementById('close-dashboard-btn').addEventListener('click', () => {
-    document.getElementById('admin-dashboard-modal').style.display = 'none';
-  });
+  document.getElementById('close-admin-modal').addEventListener('click', () => document.getElementById('admin-modal').style.display = 'none');
+  document.getElementById('close-dashboard-btn').addEventListener('click', () => document.getElementById('admin-dashboard-modal').style.display = 'none');
 
   function loadAdminDashboardData() {
-    const container = document.getElementById('admin-list-container');
-    // Dados puxados do banco D1 do Cloudflare
-    container.innerHTML = `
+    document.getElementById('admin-list-container').innerHTML = `
       <div style="display:flex; justify-content:space-between; margin-bottom:4px; border-bottom:1px solid #333; padding-bottom:4px;">
-        <span><b>${playerData.nickname}</b> (${playerData.isVisitor ? 'Visitante' : 'Registrado'})</span>
+        <span><b>${playerData.nickname}</b></span>
         <div>
-          <button style="background:#e67e22; border:none; color:#fff; cursor:pointer;" onclick="alert('Player desconectado!')">KICK</button>
-          <button style="background:#c0392b; border:none; color:#fff; cursor:pointer;" onclick="alert('Player banido no banco Cloudflare!')">BAN</button>
+          <button style="background:#e67e22; border:none; color:#fff; cursor:pointer;" onclick="alert('Kick executado!')">KICK</button>
+          <button style="background:#c0392b; border:none; color:#fff; cursor:pointer;" onclick="alert('Banido!')">BAN</button>
         </div>
-      </div>
-    `;
+      </div>`;
   }
 
-  // INICIAR O JOGO
+  // THREE.JS CENA E MUNDO 3D
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xf2b09a, 25, 110);
+
+  const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 600);
+  camera.position.set(0, 1.7, 0);
+  scene.add(camera);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  document.body.appendChild(renderer.domElement);
+
+  // Céu
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(400, 32, 16),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false,
+      vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: `varying vec3 vP; void main(){
+        float h = clamp(normalize(vP).y, 0.0, 1.0);
+        vec3 c = mix(vec3(1.0, 0.80, 0.58), vec3(0.96, 0.66, 0.64), smoothstep(0.0, 0.25, h));
+        c = mix(c, vec3(0.80, 0.54, 0.66), smoothstep(0.2, 0.9, h));
+        gl_FragColor = vec4(c, 1.0); }`
+    })
+  );
+  scene.add(sky);
+
+  // Luzes
+  const sunDir = new THREE.Vector3(-1, 0.16, -0.7).normalize();
+  const sun = new THREE.DirectionalLight(0xffb06a, 1.25);
+  sun.castShadow = true;
+  scene.add(sun, sun.target);
+  scene.add(new THREE.HemisphereLight(0xffc7b0, 0x6a8a30, 0.75));
+
+  // Chão
+  const FIELD = 50;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 16;
+  const cx = cv.getContext('2d');
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const g = 110 + Math.random() * 50;
+    cx.fillStyle = `rgb(${g * 0.55 | 0},${g},${g * 0.25 | 0})`; cx.fillRect(x, y, 1, 1);
+  }
+  const gTex = new THREE.CanvasTexture(cv);
+  gTex.magFilter = THREE.NearestFilter; gTex.wrapS = gTex.wrapT = THREE.RepeatWrapping;
+  gTex.repeat.set(FIELD * 2, FIELD * 2);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(FIELD * 2 + 80, FIELD * 2 + 80), new THREE.MeshLambertMaterial({ map: gTex }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
+
+  // Moinho central simples para teste visual
+  const moinhoMat = new THREE.MeshLambertMaterial({ color: 0x8c857b });
+  const moinhoMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 12, 4), moinhoMat);
+  moinhoMesh.position.set(0, 6, 0);
+  moinhoMesh.castShadow = true;
+  scene.add(moinhoMesh);
+
+  // Controles de Jogo
+  const controls = new THREE.PointerLockControls(camera, renderer.domElement);
+  let playing = false, inMainMenu = true;
+
   document.getElementById('play-game-btn').addEventListener('click', () => {
+    inMainMenu = false;
     mainMenuScreen.style.display = 'none';
     document.getElementById('room-info').style.display = 'block';
     document.getElementById('hud').style.display = 'block';
     document.getElementById('cross').style.display = 'block';
-    // Inicialização do Three.js e partida multiplayer já tratadas anteriormente
+    controls.lock();
   });
 
-  // THREE.JS SETUP RÁPIDO PARA O FUNDO DO MENU
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xf2b09a, 25, 110);
-  const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 600);
-  camera.position.set(0, 1.7, 0);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(innerWidth, innerHeight);
-  document.body.appendChild(renderer.domElement);
+  controls.addEventListener('lock', () => { playing = true; });
+  controls.addEventListener('unlock', () => { playing = false; });
 
+  // Loop de Renderização Contínuo
+  const clock = new THREE.Clock();
   function loop() {
     requestAnimationFrame(loop);
+    const dt = clock.getDelta(), t = clock.elapsedTime;
+
+    if (inMainMenu) {
+      const camR = 24;
+      camera.position.x = Math.cos(t * 0.12) * camR;
+      camera.position.z = Math.sin(t * 0.12) * camR;
+      camera.position.y = 7;
+      camera.lookAt(0, 2, 0);
+    }
+
+    sky.position.copy(camera.position);
     renderer.render(scene, camera);
   }
-  loop();
 
+  loop();
 })();
 </script>
 </body>
