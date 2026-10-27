@@ -73,12 +73,25 @@
   </div>
 </div>
 
-<!-- TELA DE PAUSA (ESC / B) -->
+<!-- TELA DE PAUSA / ESTATÍSTICAS (ESC / B) -->
 <div id="pause-screen" class="overlay-screen" style="display:none;">
-  <h2>JOGO PAUSADO</h2>
-  <div class="menu-panel">
-    <button class="menu-btn" id="resume-btn" style="width: 80%;">VOLTAR AO JOGO</button><br>
-    <button class="menu-btn sec" id="exit-to-main-btn" style="width: 80%;">SAIR PARA O MENU</button>
+  <h2>PAUSA / ESTATÍSTICAS</h2>
+  <div class="menu-panel" style="max-width: 420px;">
+    <div style="font-size: 13px; text-align: left; margin-bottom: 10px; background: rgba(0,0,0,0.4); padding: 8px;">
+      <div>SEUS KILLS: <b id="pause-kills">0</b></div>
+      <div>HEADSHOTS: <b id="pause-hs">0</b></div>
+      <div>PONTUAÇÃO: <b id="pause-score">0</b></div>
+    </div>
+
+    <p style="font-size:12px; color:#ffd36a; margin: 4px 0;">TROCAR ARMA:</p>
+    <div style="display:flex; gap:6px; justify-content:center; margin-bottom: 12px;">
+      <button class="menu-btn weapon-select-pause active" data-weapon="revolver" style="padding:6px 10px; font-size:11px;">REVÓLVER</button>
+      <button class="menu-btn weapon-select-pause sec" data-weapon="smg" style="padding:6px 10px; font-size:11px;">METRALHADORA</button>
+      <button class="menu-btn weapon-select-pause sec" data-weapon="sniper" style="padding:6px 10px; font-size:11px;">SNIPER</button>
+    </div>
+
+    <button class="menu-btn" id="resume-btn" style="width: 100%; margin: 4px 0;">VOLTAR AO JOGO</button><br>
+    <button class="menu-btn sec" id="exit-to-main-btn" style="width: 100%; margin: 4px 0;">VOLTAR À TELA INICIAL</button>
   </div>
 </div>
 

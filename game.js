@@ -38,15 +38,20 @@
     }
   });
 
-  // SELEÇÃO DE ARMAS NO MENU
-  document.querySelectorAll('.weapon-select').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.weapon-select').forEach(b => { b.classList.add('sec'); b.classList.remove('active'); });
-      e.target.classList.remove('sec');
-      e.target.classList.add('active');
-      selectedWeaponType = e.target.getAttribute('data-weapon');
+  // SELEÇÃO DE ARMAS (MENU E PAUSA)
+  function setupWeaponSelectors(selectorClass) {
+    document.querySelectorAll(selectorClass).forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll(selectorClass).forEach(b => { b.classList.add('sec'); b.classList.remove('active'); });
+        e.target.classList.remove('sec');
+        e.target.classList.add('active');
+        selectedWeaponType = e.target.getAttribute('data-weapon');
+        if (playing) initWeapon();
+      });
     });
-  });
+  }
+  setupWeaponSelectors('.weapon-select');
+  setupWeaponSelectors('.weapon-select-pause');
 
   // AUTENTICAÇÃO E TELAS
   const authScreen = document.getElementById('auth-screen');
@@ -262,7 +267,7 @@
     grass.setColorAt(i, new THREE.Color().setHSL(rand(0.19, 0.25), 0.65, rand(0.28, 0.42)));
   }
 
-  // Obstáculos Sólidos (Moinho, Árvores, Fardos e Muros Estáticos com Colisão Real)
+  // Obstáculos Sólidos (Moinho, Árvores, Fardos e Muros Estáticos)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
     const m = new THREE.Mesh(boxGeo(w, h, depth), new THREE.MeshLambertMaterial({ color }));
@@ -272,12 +277,11 @@
     return m;
   }
 
-  // Muros Estáticos nas Bordas do Mapa para Conter o Player
   const wallH = 6, wallThick = 2;
-  addSolidBlock(0, 0, -FIELD - wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63); // Norte
-  addSolidBlock(0, 0, FIELD + wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63);  // Sul
-  addSolidBlock(-FIELD - wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63); // Oeste
-  addSolidBlock(FIELD + wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63);  // Leste
+  addSolidBlock(0, 0, -FIELD - wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63);
+  addSolidBlock(0, 0, FIELD + wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63);
+  addSolidBlock(-FIELD - wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63);
+  addSolidBlock(FIELD + wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63);
 
   for (let y = 0; y < 10; y++) {
     const w = 6 - y * 0.25;
@@ -323,7 +327,7 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo & Gerenciamento de Pausa
+  // Controles do Jogo & Pausa Unificada (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
@@ -370,10 +374,14 @@
   controls.addEventListener('unlock', () => { 
     playing = false; 
     if (!inMainMenu && pauseScreenEl) {
+      document.getElementById('pause-kills').textContent = playerData.kills;
+      document.getElementById('pause-hs').textContent = playerData.headshots;
+      document.getElementById('pause-score').textContent = playerData.score;
       pauseScreenEl.style.display = 'flex';
     }
   });
 
+  // ESC e B com exatamente a mesma função de abrir o menu de pausa e estatísticas
   addEventListener('keydown', e => {
     if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
       controls.unlock();
@@ -558,7 +566,7 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Movimentação e Ataque dos Bots com Dano Vermelho
+    // Movimentação e Ataque dos Bots
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
