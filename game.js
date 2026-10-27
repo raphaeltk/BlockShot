@@ -37,9 +37,10 @@
     }
   });
 
-  // AUTENTICAÇÃO
+  // AUTENTICAÇÃO E TELAS
   const authScreen = document.getElementById('auth-screen');
   const menuScreenEl = document.getElementById('main-menu-screen');
+  const pauseScreenEl = document.getElementById('pause-screen');
   const authFormArea = document.getElementById('auth-form-area');
   const authModeChoice = document.getElementById('auth-mode-choice');
 
@@ -96,6 +97,7 @@
   function enterMainMenu() {
     authScreen.style.display = 'none';
     menuScreenEl.style.display = 'flex';
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('welcome-player-title').textContent = `OLÁ, ${playerData.nickname.toUpperCase()}`;
     document.getElementById('stat-kills').textContent = playerData.kills;
     document.getElementById('stat-hs').textContent = playerData.headshots;
@@ -279,7 +281,7 @@
     [stems, petA, petB, core].forEach(m => m.instanceMatrix.needsUpdate = true);
   }
 
-  // Obstáculos Sólidos (Moinho)
+  // Obstáculos Sólidos (Moinho, Árvores e Fardos)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
     const m = new THREE.Mesh(boxGeo(w, h, depth), new THREE.MeshLambertMaterial({ color }));
@@ -303,6 +305,22 @@
   }
   scene.add(millBlades);
 
+  // Restaurando Árvores e Fardos de Feno no Mapa
+  function createAppleTree(tx, tz) {
+    addSolidBlock(tx, 0, tz, 1.2, 4.5, 1.2, 0x5c3a21);
+    for (let lx = -2; lx <= 2; lx++) {
+      for (let ly = 3.8; ly <= 6.8; ly += 0.9) {
+        for (let lz = -2; lz <= 2; lz++) {
+          if (Math.abs(lx) + Math.abs(lz) <= 3) {
+            addSolidBlock(tx + lx * 0.9, ly, tz + lz * 0.9, 0.95, 0.95, 0.95, (lx + lz) % 2 === 0 ? 0x2e7d32 : 0x1b5e20);
+          }
+        }
+      }
+    }
+  }
+  [[26, -18], [-28, 20], [32, 28], [-24, -28], [18, 35], [-32, -12], [35, -30]].forEach(([tx, tz]) => createAppleTree(tx, tz));
+  [[-22, -18], [25, 16], [-30, -20], [28, -22]].forEach(([hx, hz]) => addSolidBlock(hx, 0, hz, 1.5, 1.0, 1.5, 0xd4ac0d));
+
   function isPositionSafe(px, pz, radius = 0.6) {
     const testBox = new THREE.Box3(new THREE.Vector3(px - radius, 0, pz - radius), new THREE.Vector3(px + radius, 2, pz + radius));
     for (let i = 0; i < obstacleBoxes.length; i++) { if (testBox.intersectsBox(obstacleBoxes[i])) return false; }
@@ -318,7 +336,7 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo & Pausa (ESC / B)
+  // Controles do Jogo & Gerenciamento de Pausa (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
@@ -326,6 +344,7 @@
   document.getElementById('play-game-btn').addEventListener('click', () => {
     inMainMenu = false;
     menuScreenEl.style.display = 'none';
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('score').style.display = 'block';
     document.getElementById('room-info').style.display = 'block';
     hud.style.display = 'block';
@@ -333,8 +352,39 @@
     controls.lock();
   });
 
-  controls.addEventListener('lock', () => { playing = true; });
-  controls.addEventListener('unlock', () => { playing = false; });
+  // Botões do menu de pausa (se existirem)
+  const resumeBtn = document.getElementById('resume-btn');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+      controls.lock();
+    });
+  }
+
+  const exitBtn = document.getElementById('exit-to-main-btn');
+  if (exitBtn) {
+    exitBtn.addEventListener('click', () => {
+      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+      menuScreenEl.style.display = 'flex';
+      inMainMenu = true;
+      document.getElementById('score').style.display = 'none';
+      document.getElementById('room-info').style.display = 'none';
+      hud.style.display = 'none';
+      crosshairEl.style.display = 'none';
+    });
+  }
+
+  controls.addEventListener('lock', () => { 
+    playing = true; 
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+  });
+
+  controls.addEventListener('unlock', () => { 
+    playing = false; 
+    if (!inMainMenu && pauseScreenEl) {
+      pauseScreenEl.style.display = 'flex';
+    }
+  });
 
   addEventListener('keydown', e => {
     if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
@@ -346,7 +396,7 @@
   addEventListener('keydown', e => keys[e.code] = true);
   addEventListener('keyup', e => keys[e.code] = false);
 
-  // Arma do Jogador & Sistema de Tiro
+  // Arma do Jogador & Sistema de Recarga Automática
   const gun = new THREE.Group();
   const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
   const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
@@ -360,7 +410,7 @@
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.045, -0.42); gun.add(muzzle);
   gun.position.set(0.28, -0.26, -0.55); camera.add(gun);
 
-  const W = { ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0 };
+  const W = { ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0 };
   
   // HUD de Munição e Vida
   const hud = document.createElement('div');
@@ -369,22 +419,33 @@
   document.body.appendChild(hud);
 
   function updateHud() {
-    hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.ammo} / ${W.reserve}</b>`;
+    hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.reloading ? 'RECARREGANDO...' : W.ammo + ' / ' + W.reserve}</b>`;
   }
   updateHud();
 
-  // Inimigos (Bots) com HP e Colisão
+  // Inimigos (Bots Completos com Pernas)
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
   const bots = [];
   function makeBot() {
     const g = new THREE.Group();
-    const addB = (w, h, dd, m, x, y, z) => { const b = new THREE.Mesh(boxGeo(w, h, dd), m); b.position.set(x, y, z); b.castShadow = true; b.userData.head = y > 1.4; g.add(b); };
+    const addB = (w, h, dd, m, x, y, z, isHead = false) => { 
+      const b = new THREE.Mesh(boxGeo(w, h, dd), m); 
+      b.position.set(x, y, z); 
+      b.castShadow = true; 
+      b.userData.head = isHead; 
+      g.add(b); 
+    };
+    // Tronco e Cabeça
     addB(0.55, 0.65, 0.35, BM.black, 0, 0.95, 0);
-    addB(0.45, 0.45, 0.45, BM.black, 0, 1.55, 0);
+    addB(0.45, 0.45, 0.45, BM.black, 0, 1.55, 0, true);
     addB(0.1, 0.1, 0.05, BM.eye, -0.1, 1.6, 0.24);
     addB(0.1, 0.1, 0.05, BM.eye, 0.1, 1.6, 0.24);
+    // Braços
     addB(0.18, 0.55, 0.18, BM.red, -0.38, 0.95, 0);
     addB(0.18, 0.55, 0.18, BM.red, 0.38, 0.95, 0);
+    // Pernas completas restauradas
+    addB(0.2, 0.6, 0.2, BM.black, -0.15, 0.3, 0);
+    addB(0.2, 0.6, 0.2, BM.black, 0.15, 0.3, 0);
     
     g.position.copy(findSafeSpawn(12, 38)); g.position.y = 0; g.scale.setScalar(1.5);
     g.userData = { target: new THREE.Vector3(), t: 0, ph: Math.random() * 6, hp: 100 };
@@ -393,14 +454,17 @@
   for (let i = 0; i < 6; i++) makeBot();
   let spawnTimer = 0;
 
-  // Mecânica de Tiro
+  // Mecânica de Tiro e Recarga Automática
   const ray = new THREE.Raycaster();
   const lasers = [];
   let flashT = 0;
 
   addEventListener('mousedown', e => {
-    if (!playing || e.button !== 0 || W.cd > 0) return;
-    if (W.ammo <= 0) return;
+    if (!playing || e.button !== 0 || W.cd > 0 || W.reloading) return;
+    if (W.ammo <= 0) {
+      startReload();
+      return;
+    }
     W.ammo--; W.cd = W.rate;
     playSound('revolver');
     updateHud();
@@ -434,6 +498,13 @@
     flash.visible = true; flashT = 0.05;
   });
 
+  function startReload() {
+    if (W.reloading || W.reserve <= 0 || W.ammo === W.mag) return;
+    W.reloading = true;
+    W.rt = 1.5; // Tempo de recarga em segundos
+    updateHud();
+  }
+
   // Loop Principal Contínuo
   const clock = new THREE.Clock();
   const fwdVector = new THREE.Vector3(), sideVector = new THREE.Vector3();
@@ -442,6 +513,18 @@
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
     if (W.cd > 0) W.cd -= dt;
+
+    if (W.reloading) {
+      W.rt -= dt;
+      if (W.rt <= 0) {
+        const needed = W.mag - W.ammo;
+        const take = Math.min(needed, W.reserve);
+        W.ammo += take;
+        W.reserve -= take;
+        W.reloading = false;
+        updateHud();
+      }
+    }
 
     if (playing) {
       const sp = 7 * dt;
