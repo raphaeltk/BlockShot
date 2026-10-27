@@ -267,6 +267,38 @@
     grass.setColorAt(i, new THREE.Color().setHSL(rand(0.19, 0.25), 0.65, rand(0.28, 0.42)));
   }
 
+  // FLORES DECLARADAS NO ESCOPO CORRETO
+  const PALETTE = [0xc0221f, 0xf2c230, 0x8a3fc4, 0xf4f4f0, 0xe0509a, 0x3a5fd0];
+  const NF = 1600;
+  const stems = instanced(boxGeo(0.07, 1, 0.07), NF);
+  const petA = instanced(boxGeo(0.46, 0.1, 0.17), NF);
+  const petB = instanced(boxGeo(0.17, 0.1, 0.46), NF);
+  const core = instanced(boxGeo(0.15, 0.13, 0.15), NF);
+  const flowers = [];
+  for (let i = 0; i < NF; i++) {
+    const f = { x: rand(-FIELD, FIELD), z: rand(-FIELD, FIELD), h: rand(0.5, 1.1), ph: rand(0, 6.28), ry: rand(0, 3.14) };
+    const c = new THREE.Color(PALETTE[(Math.random() * PALETTE.length) | 0]);
+    stems.setColorAt(i, new THREE.Color(0x3f7a22));
+    petA.setColorAt(i, c); petB.setColorAt(i, c);
+    core.setColorAt(i, new THREE.Color(f.h > 0.8 ? 0xd99a1e : 0xf2b620));
+    flowers.push(f);
+  }
+  const head = new THREE.Matrix4(), tmp = new THREE.Matrix4();
+  function updateFlowers(t) {
+    for (let i = 0; i < NF; i++) {
+      const f = flowers[i];
+      d.position.set(f.x, 0, f.z);
+      d.rotation.set(Math.sin(t * 1.6 + f.ph) * 0.14, f.ry, Math.cos(t * 1.3 + f.ph * 1.7) * 0.14);
+      d.scale.set(1, 1, 1); d.updateMatrix();
+      tmp.makeScale(1, f.h, 1).setPosition(0, f.h / 2, 0);
+      stems.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
+      tmp.makeTranslation(0, f.h, 0); petA.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
+      petB.setMatrixAt(i, head);
+      tmp.makeTranslation(0, f.h + 0.08, 0); core.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
+    }
+    [stems, petA, petB, core].forEach(m => m.instanceMatrix.needsUpdate = true);
+  }
+
   // Obstáculos Sólidos (Moinho, Árvores, Fardos e Muros Estáticos)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
@@ -344,7 +376,6 @@
     controls.lock();
   });
 
-  // Botões do menu de pausa
   const resumeBtn = document.getElementById('resume-btn');
   if (resumeBtn) {
     resumeBtn.addEventListener('click', () => {
@@ -381,7 +412,6 @@
     }
   });
 
-  // ESC e B com exatamente a mesma função de abrir o menu de pausa e estatísticas
   addEventListener('keydown', e => {
     if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
       controls.unlock();
