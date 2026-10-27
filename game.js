@@ -51,6 +51,7 @@
   // AUTENTICAÇÃO E TELAS
   const authScreen = document.getElementById('auth-screen');
   const menuScreenEl = document.getElementById('main-menu-screen');
+  const pauseScreenEl = document.getElementById('pause-screen');
   const authFormArea = document.getElementById('auth-form-area');
   const authModeChoice = document.getElementById('auth-mode-choice');
 
@@ -107,6 +108,7 @@
   function enterMainMenu() {
     authScreen.style.display = 'none';
     menuScreenEl.style.display = 'flex';
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('welcome-player-title').textContent = `OLÁ, ${playerData.nickname.toUpperCase()}`;
     document.getElementById('stat-kills').textContent = playerData.kills;
     document.getElementById('stat-hs').textContent = playerData.headshots;
@@ -147,7 +149,7 @@
       </div>`;
   }
 
-  // ============ WEB AUDIO API (Sons Completos) ============
+  // ============ WEB AUDIO API ============
   const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -260,47 +262,7 @@
     grass.setColorAt(i, new THREE.Color().setHSL(rand(0.19, 0.25), 0.65, rand(0.28, 0.42)));
   }
 
-  const WALL = 7000, wall = instanced(boxGeo(0.55, 1, 0.55), WALL);
-  for (let i = 0; i < WALL; i++) {
-    const h = rand(3, 6.5), side = (Math.random() * 4) | 0, a = rand(-FIELD - 6, FIELD + 6), o = FIELD + rand(0, 6);
-    const x = side < 2 ? (side ? o : -o) : a, z = side < 2 ? a : (side === 2 ? o : -o);
-    d.position.set(x, h / 2, z); d.scale.set(rand(0.8, 1.4), h, rand(0.8, 1.4)); d.rotation.set(0, rand(0, 3), 0); d.updateMatrix();
-    wall.setMatrixAt(i, d.matrix);
-    wall.setColorAt(i, new THREE.Color().setHSL(rand(0.17, 0.24), 0.6, rand(0.22, 0.38)));
-  }
-
-  const PALETTE = [0xc0221f, 0xf2c230, 0x8a3fc4, 0xf4f4f0, 0xe0509a, 0x3a5fd0];
-  const NF = 1600;
-  const stems = instanced(boxGeo(0.07, 1, 0.07), NF);
-  const petA = instanced(boxGeo(0.46, 0.1, 0.17), NF);
-  const petB = instanced(boxGeo(0.17, 0.1, 0.46), NF);
-  const core = instanced(boxGeo(0.15, 0.13, 0.15), NF);
-  const flowers = [];
-  for (let i = 0; i < NF; i++) {
-    const f = { x: rand(-FIELD, FIELD), z: rand(-FIELD, FIELD), h: rand(0.5, 1.1), ph: rand(0, 6.28), ry: rand(0, 3.14) };
-    const c = new THREE.Color(PALETTE[(Math.random() * PALETTE.length) | 0]);
-    stems.setColorAt(i, new THREE.Color(0x3f7a22));
-    petA.setColorAt(i, c); petB.setColorAt(i, c);
-    core.setColorAt(i, new THREE.Color(f.h > 0.8 ? 0xd99a1e : 0xf2b620));
-    flowers.push(f);
-  }
-  const head = new THREE.Matrix4(), tmp = new THREE.Matrix4();
-  function updateFlowers(t) {
-    for (let i = 0; i < NF; i++) {
-      const f = flowers[i];
-      d.position.set(f.x, 0, f.z);
-      d.rotation.set(Math.sin(t * 1.6 + f.ph) * 0.14, f.ry, Math.cos(t * 1.3 + f.ph * 1.7) * 0.14);
-      d.scale.set(1, 1, 1); d.updateMatrix();
-      tmp.makeScale(1, f.h, 1).setPosition(0, f.h / 2, 0);
-      stems.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
-      tmp.makeTranslation(0, f.h, 0); petA.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
-      petB.setMatrixAt(i, head);
-      tmp.makeTranslation(0, f.h + 0.08, 0); core.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
-    }
-    [stems, petA, petB, core].forEach(m => m.instanceMatrix.needsUpdate = true);
-  }
-
-  // Obstáculos Sólidos (Moinho, Árvores e Fardos)
+  // Obstáculos Sólidos (Moinho, Árvores, Fardos e Muros Estáticos com Colisão Real)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
     const m = new THREE.Mesh(boxGeo(w, h, depth), new THREE.MeshLambertMaterial({ color }));
@@ -309,6 +271,13 @@
     obstacleBoxes.push(new THREE.Box3().setFromObject(m));
     return m;
   }
+
+  // Muros Estáticos nas Bordas do Mapa para Conter o Player
+  const wallH = 6, wallThick = 2;
+  addSolidBlock(0, 0, -FIELD - wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63); // Norte
+  addSolidBlock(0, 0, FIELD + wallThick/2, FIELD * 2, wallH, wallThick, 0x736c63);  // Sul
+  addSolidBlock(-FIELD - wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63); // Oeste
+  addSolidBlock(FIELD + wallThick/2, 0, 0, wallThick, wallH, FIELD * 2, 0x736c63);  // Leste
 
   for (let y = 0; y < 10; y++) {
     const w = 6 - y * 0.25;
@@ -354,7 +323,7 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo & Pausa
+  // Controles do Jogo & Gerenciamento de Pausa
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
@@ -362,6 +331,7 @@
   document.getElementById('play-game-btn').addEventListener('click', () => {
     inMainMenu = false;
     menuScreenEl.style.display = 'none';
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
     document.getElementById('score').style.display = 'block';
     document.getElementById('room-info').style.display = 'block';
     hud.style.display = 'block';
@@ -370,8 +340,39 @@
     controls.lock();
   });
 
-  controls.addEventListener('lock', () => { playing = true; });
-  controls.addEventListener('unlock', () => { playing = false; });
+  // Botões do menu de pausa
+  const resumeBtn = document.getElementById('resume-btn');
+  if (resumeBtn) {
+    resumeBtn.addEventListener('click', () => {
+      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+      controls.lock();
+    });
+  }
+
+  const exitBtn = document.getElementById('exit-to-main-btn');
+  if (exitBtn) {
+    exitBtn.addEventListener('click', () => {
+      if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+      menuScreenEl.style.display = 'flex';
+      inMainMenu = true;
+      document.getElementById('score').style.display = 'none';
+      document.getElementById('room-info').style.display = 'none';
+      hud.style.display = 'none';
+      crosshairEl.style.display = 'none';
+    });
+  }
+
+  controls.addEventListener('lock', () => { 
+    playing = true; 
+    if (pauseScreenEl) pauseScreenEl.style.display = 'none';
+  });
+
+  controls.addEventListener('unlock', () => { 
+    playing = false; 
+    if (!inMainMenu && pauseScreenEl) {
+      pauseScreenEl.style.display = 'flex';
+    }
+  });
 
   addEventListener('keydown', e => {
     if ((e.code === 'KeyB' || e.code === 'Escape') && playing) {
@@ -397,7 +398,7 @@
   let W = { name: '', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
 
   function initWeapon() {
-    while(gun.children.length > 2) gun.remove(gun.children[2]); // Remove partes antigas mantendo flash e muzzle
+    while(gun.children.length > 2) gun.remove(gun.children[2]);
     const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
     const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
 
@@ -431,7 +432,7 @@
     hud.innerHTML = `${W.name} | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.reloading ? 'RECARREGANDO...' : W.ammo + ' / ' + W.reserve}</b>`;
   }
 
-  // Inimigos (Bots com Pernas Completas)
+  // Inimigos (Bots)
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
   const bots = [];
   function makeBot() {
@@ -449,7 +450,6 @@
     addB(0.1, 0.1, 0.05, BM.eye, 0.1, 1.6, 0.24);
     addB(0.18, 0.55, 0.18, BM.red, -0.38, 0.95, 0);
     addB(0.18, 0.55, 0.18, BM.red, 0.38, 0.95, 0);
-    // Pernas
     addB(0.2, 0.6, 0.2, BM.black, -0.15, 0.3, 0);
     addB(0.2, 0.6, 0.2, BM.black, 0.15, 0.3, 0);
     
@@ -558,7 +558,7 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Movimentação e Ataque dos Bots com Dano Vermelho na Tela
+    // Movimentação e Ataque dos Bots com Dano Vermelho
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
@@ -569,7 +569,6 @@
         if (dist < 12) u.target.copy(camera.position);
         if (dist < 2.2) {
           playerHP -= 15 * dt; updateHud();
-          // Efeito visual de dano vermelho
           const flashEl = document.getElementById('damage-flash');
           if (flashEl) { flashEl.style.background = 'rgba(255,0,0,0.4)'; setTimeout(() => flashEl.style.background = 'rgba(255,0,0,0)', 100); }
           if (playerHP <= 0) { playerHP = 100; camera.position.copy(findSafeSpawn(10, 18)); }
