@@ -248,7 +248,6 @@
   ground.receiveShadow = true;
   scene.add(ground);
 
-  // Flores e Grama Instanciadas
   const rand = (a, b) => a + Math.random() * (b - a);
   const boxGeo = (w, h, d) => new THREE.BoxGeometry(w, h, d);
   const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
@@ -267,7 +266,6 @@
     grass.setColorAt(i, new THREE.Color().setHSL(rand(0.19, 0.25), 0.65, rand(0.28, 0.42)));
   }
 
-  // FLORES DECLARADAS NO ESCOPO CORRETO
   const PALETTE = [0xc0221f, 0xf2c230, 0x8a3fc4, 0xf4f4f0, 0xe0509a, 0x3a5fd0];
   const NF = 1600;
   const stems = instanced(boxGeo(0.07, 1, 0.07), NF);
@@ -283,7 +281,7 @@
     core.setColorAt(i, new THREE.Color(f.h > 0.8 ? 0xd99a1e : 0xf2b620));
     flowers.push(f);
   }
-  const head = new THREE.Matrix4(), tmp = new THREE.Matrix4();
+  const headMat = new THREE.Matrix4(), tmp = new THREE.Matrix4();
   function updateFlowers(t) {
     for (let i = 0; i < NF; i++) {
       const f = flowers[i];
@@ -291,15 +289,14 @@
       d.rotation.set(Math.sin(t * 1.6 + f.ph) * 0.14, f.ry, Math.cos(t * 1.3 + f.ph * 1.7) * 0.14);
       d.scale.set(1, 1, 1); d.updateMatrix();
       tmp.makeScale(1, f.h, 1).setPosition(0, f.h / 2, 0);
-      stems.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
-      tmp.makeTranslation(0, f.h, 0); petA.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
-      petB.setMatrixAt(i, head);
-      tmp.makeTranslation(0, f.h + 0.08, 0); core.setMatrixAt(i, head.multiplyMatrices(d.matrix, tmp));
+      stems.setMatrixAt(i, headMat.multiplyMatrices(d.matrix, tmp));
+      tmp.makeTranslation(0, f.h, 0); petA.setMatrixAt(i, headMat.multiplyMatrices(d.matrix, tmp));
+      petB.setMatrixAt(i, headMat);
+      tmp.makeTranslation(0, f.h + 0.08, 0); core.setMatrixAt(i, headMat.multiplyMatrices(d.matrix, tmp));
     }
     [stems, petA, petB, core].forEach(m => m.instanceMatrix.needsUpdate = true);
   }
 
-  // Obstáculos Sólidos (Moinho, Árvores, Fardos e Muros Estáticos)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
     const m = new THREE.Mesh(boxGeo(w, h, depth), new THREE.MeshLambertMaterial({ color }));
@@ -359,7 +356,6 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo & Pausa Unificada (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   const crosshairEl = document.getElementById('cross');
   let playing = false, inMainMenu = true;
@@ -425,7 +421,6 @@
   addEventListener('keydown', e => keys[e.code] = true);
   addEventListener('keyup', e => keys[e.code] = false);
 
-  // Configuração Dinâmica de Armas
   const gun = new THREE.Group();
   camera.add(gun);
   const flash = new THREE.Mesh(boxGeo(0.2, 0.2, 0.12), new THREE.MeshBasicMaterial({ color: 0xffe28a, fog: false }));
@@ -433,7 +428,7 @@
   const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.045, -0.42); gun.add(muzzle);
   gun.position.set(0.28, -0.26, -0.55);
 
-  let W = { name: '', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
+  let W = { name: '', ammo: 6, mag: 6, reserve: 36, headDmg: 100, bodyDmg: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
 
   function initWeapon() {
     while(gun.children.length > 2) gun.remove(gun.children[2]);
@@ -441,50 +436,27 @@
     const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
 
     if (selectedWeaponType === 'revolver') {
-      W = { name: 'REVÓLVER (.38)', ammo: 6, mag: 6, reserve: 36, head: 100, body: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
-      // Corpo Principal do Revólver
+      W = { name: 'REVÓLVER (.38)', ammo: 6, mag: 6, reserve: 36, headDmg: 100, bodyDmg: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
       part(0.08, 0.13, 0.32, 0x5a5a62, 0, 0.02, -0.12);
-      // Cano
       part(0.06, 0.06, 0.28, 0x303035, 0, 0.05, -0.34);
-      // Tambor (Cilindro)
       part(0.12, 0.12, 0.14, 0x8a8a92, 0, 0.02, -0.1);
-      // Alça / Coronha
       part(0.08, 0.22, 0.12, 0x6b4423, 0, -0.14, 0.08);
-      // Cão e Gatilho
-      part(0.03, 0.06, 0.05, 0x222, 0, 0.08, 0.02);
-      part(0.02, 0.06, 0.04, 0x111, 0, -0.04, -0.04);
     } else if (selectedWeaponType === 'smg') {
-      W = { name: 'METRALHADORA', ammo: 30, mag: 30, reserve: 120, head: 50, body: 18, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
-      // Corpo da SMG
+      W = { name: 'METRALHADORA', ammo: 20, mag: 20, reserve: 100, headDmg: 50, bodyDmg: 18, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
       part(0.09, 0.14, 0.45, 0x3a3a40, 0, 0.02, -0.15);
-      // Cano Longo com Silenciador/Focinho
       part(0.05, 0.05, 0.35, 0x1a1a1e, 0, 0.06, -0.45);
-      // Carregador Reto Alongado
       part(0.06, 0.26, 0.10, 0x222225, 0, -0.16, -0.05);
-      // Empunhadura Frontal e Traseira
       part(0.07, 0.18, 0.09, 0x2a2a2e, 0, -0.14, 0.12);
-      part(0.06, 0.14, 0.08, 0x2a2a2e, 0, -0.12, -0.22);
-      // Luneta / Mira Tática Superior
-      part(0.05, 0.05, 0.22, 0x111, 0, 0.11, -0.15);
     } else if (selectedWeaponType === 'sniper') {
-      W = { name: 'SNIPER RIFLE', ammo: 5, mag: 5, reserve: 20, head: 100, body: 90, rate: 1.2, cd: 0, reloading: false, rt: 0, soundType: 'sniper' };
-      // Corpo / Chassi Principal
+      W = { name: 'SNIPER RIFLE', ammo: 1, mag: 1, reserve: 15, headDmg: 100, bodyDmg: 90, rate: 1.2, cd: 0, reloading: false, rt: 0, soundType: 'sniper' };
       part(0.07, 0.11, 0.70, 0x243024, 0, 0.02, -0.2);
-      // Cano da Sniper Super Longo
       part(0.04, 0.04, 0.55, 0x151815, 0, 0.05, -0.55);
-      // Luneta de Precisão (Scope)
       part(0.07, 0.08, 0.30, 0x111, 0, 0.12, -0.2);
-      // Suporte da Luneta
-      part(0.03, 0.06, 0.08, 0x333, 0, 0.08, -0.2);
-      // Coronha de Madeira / Polímero Longa
       part(0.08, 0.13, 0.30, 0x4a3319, 0, 0.0, 0.22);
-      // Puxador / Carregador
-      part(0.05, 0.18, 0.10, 0x1b1b1b, 0, -0.14, 0.05);
     }
     updateHud();
   }
 
-  // HUD de Munição e Vida
   const hud = document.createElement('div');
   hud.id = 'hud';
   hud.style.cssText = `position: fixed; left: 22px; bottom: 18px; color: #fff; font-size: 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 2; display: none;`;
@@ -494,7 +466,6 @@
     hud.innerHTML = `${W.name} | VIDA: <b>${Math.max(0, Math.round(playerHP))}</b><br><b>${W.reloading ? 'RECARREGANDO...' : W.ammo + ' / ' + W.reserve}</b>`;
   }
 
-  // Inimigos (Bots)
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
   const bots = [];
   function makeBot() {
@@ -522,10 +493,17 @@
   for (let i = 0; i < 6; i++) makeBot();
   let spawnTimer = 0;
 
-  // Mecânica de Tiro e Recarga
   const ray = new THREE.Raycaster();
   const lasers = [];
   let flashT = 0;
+
+  function triggerHeadshotEffect() {
+    const hsEl = document.getElementById('hs-indicator');
+    if (hsEl) {
+      hsEl.classList.add('show');
+      setTimeout(() => hsEl.classList.remove('show'), 600);
+    }
+  }
 
   addEventListener('mousedown', e => {
     if (!playing || e.button !== 0 || W.cd > 0 || W.reloading) return;
@@ -545,12 +523,17 @@
       while (curr && curr.parent) { if (bots.includes(curr)) break; curr = curr.parent; }
       if (curr && bots.includes(curr)) {
         const isHead = hitObj.userData.head;
-        curr.userData.hp -= isHead ? W.head : W.body;
+        const dmg = isHead ? W.headDmg : W.bodyDmg;
+        curr.userData.hp -= dmg;
         playSound(isHead ? 'headshot' : 'hit');
+
         if (curr.userData.hp <= 0) {
           scene.remove(curr); bots.splice(bots.indexOf(curr), 1);
           playerData.kills++;
-          if (isHead) playerData.headshots++;
+          if (isHead) {
+            playerData.headshots++;
+            triggerHeadshotEffect();
+          }
           playerData.score = playerData.kills * 10;
           document.getElementById('score').textContent = 'PONTOS: ' + playerData.score;
         }
@@ -561,16 +544,19 @@
     l.position.copy(from).lerp(to, 0.5); l.lookAt(to); l.userData.life = 0.12;
     scene.add(l); lasers.push(l);
     flash.visible = true; flashT = 0.05;
+
+    if (W.ammo <= 0) {
+      startReload();
+    }
   });
 
   function startReload() {
     if (W.reloading || W.reserve <= 0 || W.ammo === W.mag) return;
     W.reloading = true;
-    W.rt = 1.5;
+    W.rt = 1.2;
     updateHud();
   }
 
-  // Loop Principal Contínuo
   const clock = new THREE.Clock();
   const fwdVector = new THREE.Vector3(), sideVector = new THREE.Vector3();
 
@@ -620,7 +606,6 @@
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
 
-    // Movimentação e Ataque dos Bots
     spawnTimer += dt;
     if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
     bots.forEach(b => {
