@@ -6,6 +6,7 @@
   let isRegistering = false;
   let playerHP = 100;
   let selectedWeaponType = 'revolver';
+  let isAiming = false;
 
   // CONSOLE CS (' ou ")
   const consoleEl = document.getElementById('cs-console');
@@ -39,12 +40,10 @@
   });
 
   // SELEÇÃO DE ARMAS (MENU E PAUSA)
-  // SELEÇÃO DE ARMAS (MENU E PAUSA)
   function setupWeaponSelectors(selectorClass) {
     document.querySelectorAll(selectorClass).forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll(selectorClass).forEach(b => { b.classList.add('sec'); b.classList.remove('active'); });
-        // Sincroniza ambos os menus (principal e pausa)
         const targetWeapon = e.target.getAttribute('data-weapon');
         document.querySelectorAll(`[data-weapon="${targetWeapon}"]`).forEach(b => {
           b.classList.remove('sec');
@@ -242,7 +241,7 @@
   const cx = cv.getContext('2d');
   for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
     const g = 110 + Math.random() * 50;
-    cx.fillStyle = `rgb(${g * 0.55 | 0},${g},${g * 0.25 | 0})`; cx.fillRect(x, y, 1, 1);
+    cx.fillStyle = `rgb(${g * 0.55 | 0},${g | 0},${g * 0.25 | 0})`; cx.fillRect(x, y, 1, 1);
   }
   const gTex = new THREE.CanvasTexture(cv);
   gTex.magFilter = THREE.NearestFilter; gTex.wrapS = gTex.wrapT = THREE.RepeatWrapping;
@@ -373,7 +372,7 @@
     document.getElementById('room-info').style.display = 'block';
     hud.style.display = 'block';
     crosshairEl.style.display = 'block';
-    initWeapon(); // Garante que carrega a arma escolhida ao entrar
+    initWeapon();
     controls.lock();
   });
 
@@ -436,6 +435,10 @@
   let W = { name: '', ammo: 6, mag: 6, reserve: 36, headDmg: 100, bodyDmg: 35, rate: 0.65, cd: 0, reloading: false, rt: 0, soundType: 'revolver' };
 
   function initWeapon() {
+    isAiming = false;
+    camera.fov = 75;
+    camera.updateProjectionMatrix();
+
     while(gun.children.length > 2) gun.remove(gun.children[2]);
     const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
     const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
@@ -511,7 +514,17 @@
   }
 
   addEventListener('mousedown', e => {
-    if (!playing || e.button !== 0 || W.cd > 0 || W.reloading) return;
+    if (!playing) return;
+
+    // Scope / Zoom da Sniper com Botão Direito
+    if (e.button === 2 && selectedWeaponType === 'sniper') {
+      isAiming = !isAiming;
+      camera.fov = isAiming ? 25 : 75;
+      camera.updateProjectionMatrix();
+      return;
+    }
+
+    if (e.button !== 0 || W.cd > 0 || W.reloading) return;
     if (W.ammo <= 0) { startReload(); return; }
     W.ammo--; W.cd = W.rate;
     playSound(W.soundType);
@@ -623,7 +636,11 @@
           playerHP -= 15 * dt; updateHud();
           const flashEl = document.getElementById('damage-flash');
           if (flashEl) { flashEl.style.background = 'rgba(255,0,0,0.4)'; setTimeout(() => flashEl.style.background = 'rgba(255,0,0,0)', 100); }
-          if (playerHP <= 0) { playerHP = 100; camera.position.copy(findSafeSpawn(10, 18)); }
+          if (playerHP <= 0) { 
+            playerHP = 100; 
+            camera.position.copy(findSafeSpawn(10, 18));
+            initWeapon();
+          }
         }
       }
       const dir = u.target.clone().sub(b.position); dir.y = 0;
