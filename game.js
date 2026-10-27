@@ -7,6 +7,23 @@
   let playerHP = 100;
   let selectedWeaponType = 'revolver';
   let isAiming = false;
+  let isMouseDown = false;
+  let fireTimer = 0;
+
+  // Criar o Elemento Visual do Scope da AWP no DOM
+  const scopeOverlay = document.createElement('div');
+  scopeOverlay.id = 'awp-scope';
+  scopeOverlay.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle, rgba(0,0,0,0) 30%, rgba(0,0,0,0.85) 45%, rgba(0,0,0,1) 60%);
+    display: none; pointer-events: none; z-index: 10;
+  `;
+  scopeOverlay.innerHTML = `
+    <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #000;"></div>
+    <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: #000;"></div>
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; border: 2px solid #00ff00; border-radius: 50%;"></div>
+  `;
+  document.body.appendChild(scopeOverlay);
 
   // CONSOLE CS (' ou ")
   const consoleEl = document.getElementById('cs-console');
@@ -404,6 +421,10 @@
 
   controls.addEventListener('unlock', () => { 
     playing = false; 
+    isAiming = false;
+    scopeOverlay.style.display = 'none';
+    camera.fov = 75;
+    camera.updateProjectionMatrix();
     if (!inMainMenu && pauseScreenEl) {
       document.getElementById('pause-kills').textContent = playerData.kills;
       document.getElementById('pause-hs').textContent = playerData.headshots;
@@ -436,6 +457,7 @@
 
   function initWeapon() {
     isAiming = false;
+    scopeOverlay.style.display = 'none';
     camera.fov = 75;
     camera.updateProjectionMatrix();
 
@@ -513,18 +535,33 @@
     }
   }
 
+  // Eventos de clique para disparo e scope contínuo (Full-Auto para SMG)
   addEventListener('mousedown', e => {
     if (!playing) return;
 
-    // Scope / Zoom da Sniper com Botão Direito
     if (e.button === 2 && selectedWeaponType === 'sniper') {
       isAiming = !isAiming;
-      camera.fov = isAiming ? 25 : 75;
+      camera.fov = isAiming ? 20 : 75;
       camera.updateProjectionMatrix();
+      scopeOverlay.style.display = isAiming ? 'block' : 'none';
+      crosshairEl.style.display = isAiming ? 'none' : 'block';
       return;
     }
 
-    if (e.button !== 0 || W.cd > 0 || W.reloading) return;
+    if (e.button === 0) {
+      isMouseDown = true;
+      fireWeapon();
+    }
+  });
+
+  addEventListener('mouseup', e => {
+    if (e.button === 0) {
+      isMouseDown = false;
+    }
+  });
+
+  function fireWeapon() {
+    if (!playing || W.cd > 0 || W.reloading) return;
     if (W.ammo <= 0) { startReload(); return; }
     W.ammo--; W.cd = W.rate;
     playSound(W.soundType);
@@ -566,7 +603,7 @@
     if (W.ammo <= 0) {
       startReload();
     }
-  });
+  }
 
   function startReload() {
     if (W.reloading || W.reserve <= 0 || W.ammo === W.mag) return;
@@ -582,6 +619,11 @@
     requestAnimationFrame(loop);
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
     if (W.cd > 0) W.cd -= dt;
+
+    // Full-Auto para a Metralhadora (SMG) ao segurar o botão esquerdo
+    if (isMouseDown && selectedWeaponType === 'smg' && playing && W.cd <= 0 && !W.reloading) {
+      fireWeapon();
+    }
 
     if (W.reloading) {
       W.rt -= dt;
@@ -639,6 +681,11 @@
           if (playerHP <= 0) { 
             playerHP = 100; 
             camera.position.copy(findSafeSpawn(10, 18));
+            isAiming = false;
+            scopeOverlay.style.display = 'none';
+            crosshairEl.style.display = 'block';
+            camera.fov = 75;
+            camera.updateProjectionMatrix();
             initWeapon();
           }
         }
