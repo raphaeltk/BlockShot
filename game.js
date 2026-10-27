@@ -37,7 +37,7 @@
     }
   });
 
-  // AUTENTICAÇÃO E CLIQUES DOS BOTÕES CORRIGIDOS
+  // AUTENTICAÇÃO
   const authScreen = document.getElementById('auth-screen');
   const mainMenuScreen = document.getElementById('main-menu-screen');
   const authFormArea = document.getElementById('auth-form-area');
@@ -85,7 +85,7 @@
       if (!ageChecked) { alert("Você deve confirmar a caixa de idade livre!"); return; }
       
       playerData = { nickname: nick, email: email, isVisitor: false, kills: 0, headshots: 0, score: 0 };
-      alert("Conta criada com sucesso via Cloudflare Database!");
+      alert("Conta criada com sucesso!");
       enterMainMenu();
     } else {
       playerData = { nickname: email.split('@')[0], email: email, isVisitor: false, kills: 12, headshots: 5, score: 145 };
@@ -136,7 +136,7 @@
       </div>`;
   }
 
-  // ============ THREE.JS: MUNDO 3D COMPLETO ============
+  // ============ THREE.JS: CENA E MUNDO 3D ============
   const FOG = 0xf2b09a;
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(FOG, 25, 110);
@@ -263,7 +263,7 @@
     [stems, petA, petB, core].forEach(m => m.instanceMatrix.needsUpdate = true);
   }
 
-  // Obstáculos Sólidos (Moinho, Árvores)
+  // Obstáculos Sólidos (Moinho)
   const obstacles = [], obstacleBoxes = [];
   function addSolidBlock(x, y, z, w, h, depth, color) {
     const m = new THREE.Mesh(boxGeo(w, h, depth), new THREE.MeshLambertMaterial({ color }));
@@ -302,7 +302,7 @@
   }
   camera.position.copy(findSafeSpawn(10, 20));
 
-  // Controles do Jogo
+  // Controles do Jogo & Pausa (ESC / B)
   const controls = new THREE.PointerLockControls(camera, renderer.domElement);
   let playing = false, inMainMenu = true;
 
@@ -319,9 +319,32 @@
   controls.addEventListener('lock', () => { playing = true; });
   controls.addEventListener('unlock', () => { playing = false; });
 
+  addEventListener('keydown', e => {
+    if (e.code === 'KeyB' && playing) {
+      controls.unlock();
+    }
+  });
+
   const keys = {};
   addEventListener('keydown', e => keys[e.code] = true);
   addEventListener('keyup', e => keys[e.code] = false);
+
+  // Arma do Jogador
+  const gun = new THREE.Group();
+  const gm = (c) => new THREE.MeshLambertMaterial({ color: c });
+  const part = (w, h, dd, c, x, y, z) => { const m = new THREE.Mesh(boxGeo(w, h, dd), gm(c)); m.position.set(x, y, z); gun.add(m); return m; };
+  part(0.07, 0.11, 0.26, 0x6a6a72, 0, 0.02, -0.1);
+  part(0.05, 0.05, 0.22, 0x3a3a40, 0, 0.045, -0.31);
+  part(0.11, 0.11, 0.10, 0x9a9aa2, 0, 0.0, 0.0);
+  part(0.08, 0.17, 0.10, 0x7a4524, 0, -0.12, 0.1);
+  gun.position.set(0.28, -0.26, -0.55); camera.add(gun);
+
+  // HUD de Munição e Vida
+  const hud = document.createElement('div');
+  hud.id = 'hud';
+  hud.style.cssText = `position: fixed; left: 22px; bottom: 18px; color: #fff; font-size: 16px; letter-spacing: 1px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 2; display: none;`;
+  hud.innerHTML = `REVÓLVER (.38) | VIDA: <b>100</b><br><b>6 / 36</b>`;
+  document.body.appendChild(hud);
 
   // Inimigos (Bots)
   const BM = { black: new THREE.MeshLambertMaterial({ color: 0x161618 }), red: new THREE.MeshLambertMaterial({ color: 0xd01e1e }), eye: new THREE.MeshBasicMaterial({ color: 0xff4040 }) };
@@ -336,8 +359,9 @@
     scene.add(g); bots.push(g);
   }
   for (let i = 0; i < 6; i++) makeBot();
+  let spawnTimer = 0;
 
-  // Loop de Renderização Contínuo
+  // Loop Principal Contínuo
   const clock = new THREE.Clock();
   const fwdVector = new THREE.Vector3(), sideVector = new THREE.Vector3();
 
@@ -373,6 +397,20 @@
     sky.position.copy(camera.position);
     sunDisc.position.copy(camera.position).addScaledVector(sunDir, 350); sunDisc.lookAt(camera.position);
     sun.position.copy(camera.position).addScaledVector(sunDir, 70); sun.target.position.copy(camera.position);
+
+    // Movimentação dos Bots
+    spawnTimer += dt;
+    if (bots.length < 8 && spawnTimer > 1.5) { makeBot(); spawnTimer = 0; }
+    bots.forEach(b => {
+      const u = b.userData; u.t -= dt;
+      if (u.t <= 0) { u.target.set(rand(-FIELD + 3, FIELD - 3), 0, rand(-FIELD + 3, FIELD - 3)); u.t = rand(4, 9); }
+      const dir = u.target.clone().sub(b.position); dir.y = 0;
+      if (dir.length() > 0.5) {
+        dir.normalize(); b.position.addScaledVector(dir, 2.0 * dt);
+        b.rotation.y = Math.atan2(dir.x, dir.z);
+      }
+      b.position.y = Math.abs(Math.sin(t * 5 + u.ph)) * 0.08;
+    });
 
     renderer.render(scene, camera);
   }
