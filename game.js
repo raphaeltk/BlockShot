@@ -39,14 +39,19 @@
   });
 
   // SELEÇÃO DE ARMAS (MENU E PAUSA)
+  // SELEÇÃO DE ARMAS (MENU E PAUSA)
   function setupWeaponSelectors(selectorClass) {
     document.querySelectorAll(selectorClass).forEach(btn => {
       btn.addEventListener('click', (e) => {
         document.querySelectorAll(selectorClass).forEach(b => { b.classList.add('sec'); b.classList.remove('active'); });
-        e.target.classList.remove('sec');
-        e.target.classList.add('active');
-        selectedWeaponType = e.target.getAttribute('data-weapon');
-        if (playing) initWeapon();
+        // Sincroniza ambos os menus (principal e pausa)
+        const targetWeapon = e.target.getAttribute('data-weapon');
+        document.querySelectorAll(`[data-weapon="${targetWeapon}"]`).forEach(b => {
+          b.classList.remove('sec');
+          b.classList.add('active');
+        });
+        selectedWeaponType = targetWeapon;
+        if (playing || !inMainMenu) initWeapon();
       });
     });
   }
@@ -368,7 +373,7 @@
     document.getElementById('room-info').style.display = 'block';
     hud.style.display = 'block';
     crosshairEl.style.display = 'block';
-    initWeapon();
+    initWeapon(); // Garante que carrega a arma escolhida ao entrar
     controls.lock();
   });
 
