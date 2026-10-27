@@ -8,9 +8,8 @@
   let selectedWeaponType = 'revolver';
   let isAiming = false;
   let isMouseDown = false;
-  let fireTimer = 0;
 
-  // Criar o Elemento Visual do Scope da AWP no DOM
+  // Scope estilo AWP com bolinha vermelha no centro
   const scopeOverlay = document.createElement('div');
   scopeOverlay.id = 'awp-scope';
   scopeOverlay.style.cssText = `
@@ -21,7 +20,7 @@
   scopeOverlay.innerHTML = `
     <div style="position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: #000;"></div>
     <div style="position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: #000;"></div>
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; border: 2px solid #00ff00; border-radius: 50%;"></div>
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: #ff0000; border: 2px solid #8b0000; border-radius: 50%;"></div>
   `;
   document.body.appendChild(scopeOverlay);
 
@@ -423,6 +422,7 @@
     playing = false; 
     isAiming = false;
     scopeOverlay.style.display = 'none';
+    crosshairEl.style.display = 'block';
     camera.fov = 75;
     camera.updateProjectionMatrix();
     if (!inMainMenu && pauseScreenEl) {
@@ -458,6 +458,7 @@
   function initWeapon() {
     isAiming = false;
     scopeOverlay.style.display = 'none';
+    crosshairEl.style.display = 'block';
     camera.fov = 75;
     camera.updateProjectionMatrix();
 
@@ -472,7 +473,7 @@
       part(0.12, 0.12, 0.14, 0x8a8a92, 0, 0.02, -0.1);
       part(0.08, 0.22, 0.12, 0x6b4423, 0, -0.14, 0.08);
     } else if (selectedWeaponType === 'smg') {
-      W = { name: 'METRALHADORA', ammo: 20, mag: 20, reserve: 100, headDmg: 50, bodyDmg: 18, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
+      W = { name: 'METRALHADORA', ammo: 20, mag: 20, reserve: 100, headDmg: 25, bodyDmg: 10, rate: 0.12, cd: 0, reloading: false, rt: 0, soundType: 'smg' };
       part(0.09, 0.14, 0.45, 0x3a3a40, 0, 0.02, -0.15);
       part(0.05, 0.05, 0.35, 0x1a1a1e, 0, 0.06, -0.45);
       part(0.06, 0.26, 0.10, 0x222225, 0, -0.16, -0.05);
@@ -535,16 +536,16 @@
     }
   }
 
-  // Eventos de clique para disparo e scope contínuo (Full-Auto para SMG)
+  // Controle de clique e soltar botão do mouse (Scope abre ao segurar e fecha ao soltar)
   addEventListener('mousedown', e => {
     if (!playing) return;
 
     if (e.button === 2 && selectedWeaponType === 'sniper') {
-      isAiming = !isAiming;
-      camera.fov = isAiming ? 20 : 75;
+      isAiming = true;
+      camera.fov = 20;
       camera.updateProjectionMatrix();
-      scopeOverlay.style.display = isAiming ? 'block' : 'none';
-      crosshairEl.style.display = isAiming ? 'none' : 'block';
+      scopeOverlay.style.display = 'block';
+      crosshairEl.style.display = 'none';
       return;
     }
 
@@ -555,6 +556,18 @@
   });
 
   addEventListener('mouseup', e => {
+    if (!playing) return;
+
+    // Ao soltar o botão direito, o scope da sniper fecha e volta ao normal
+    if (e.button === 2 && selectedWeaponType === 'sniper') {
+      isAiming = false;
+      camera.fov = 75;
+      camera.updateProjectionMatrix();
+      scopeOverlay.style.display = 'none';
+      crosshairEl.style.display = 'block';
+      return;
+    }
+
     if (e.button === 0) {
       isMouseDown = false;
     }
@@ -620,7 +633,6 @@
     const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
     if (W.cd > 0) W.cd -= dt;
 
-    // Full-Auto para a Metralhadora (SMG) ao segurar o botão esquerdo
     if (isMouseDown && selectedWeaponType === 'smg' && playing && W.cd <= 0 && !W.reloading) {
       fireWeapon();
     }
